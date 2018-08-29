@@ -1,0 +1,40 @@
+{
+  "name": "emckay-books",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^1.2.2",
+    "@fortawesome/pro-light-svg-icons": "5.3.0",
+    "@fortawesome/pro-regular-svg-icons": "^5.3.1",
+    "@fortawesome/pro-solid-svg-icons": "^5.3.1",
+    "@fortawesome/react-fontawesome": "^0.1.2",
+    "apollo-boost": "^0.1.15",
+    "bootstrap": "^4.1.3",
+    "bootswatch": "^4.1.3",
+    "classnames": "^2.2.6",
+    "d3-scale-chromatic": "^1.3.0",
+    "graphql": "^0.13.2",
+    "moment": "^2.22.2",
+    "prettier": "^1.14.2",
+    "react": "^16.4.2",
+    "react-apollo": "^2.1.11",
+    "react-dom": "^16.4.2",
+    "react-scripts": "1.1.5",
+    "reactstrap": "^6.4.0",
+    "surge": "^0.20.1",
+    "victory": "^30.2.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject",
+    "deploy": "surge ./build",
+    "format": "node_modules/.bin/prettier *.js **/*.js --write"
+  },
+  "devDependencies": {
+    "babel-eslint": "^9.0.0",
+    "eslint": "^5.4.0",
+    "eslint-plugin-react": "^7.11.1"
+  }
+}
