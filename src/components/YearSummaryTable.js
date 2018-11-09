@@ -64,26 +64,18 @@ export default class YearSummaryTable extends React.Component {
                   PivotValue: (row) => row.value,
                 },
                 {
-                  Header: 'Month',
-                  id: 'month',
-                  accessor: (row) => DateTime.fromISO(row.startDate).month,
-                  PivotValue: (row) =>
-                    DateTime.fromObject({
-                      month: parseInt(row.value, 10),
-                    }).toLocaleString({month: 'long'}),
-                  Aggregated: () => {},
-                },
-                {
                   Header: 'Title',
                   accessor: 'book.title',
-                  aggregate: (vals) =>
-                    _.sum(vals.map((v) => (_.isString(v) ? 1 : v))),
+                  aggregate: (vals) => vals.length,
                   Aggregated: (row) => `${row.value} total`,
                 },
                 {
                   Header: 'Rating',
                   accessor: 'rating',
-                  aggregate: (vals) => _.mean(vals),
+                  aggregate: (vals) =>
+                    _.mean(
+                      vals.filter((v) => !_.isNil(v) && !_.isNaN(v) && v > 0),
+                    ),
                   Aggregated: (row) => `${row.value.toFixed(2)} average`,
                 },
                 {
@@ -91,7 +83,10 @@ export default class YearSummaryTable extends React.Component {
                   id: 'lengthAvg',
                   accessor: (row) =>
                     row.book.estimatedLength / LENGTH_NORMALIZATION_FACTOR,
-                  aggregate: (vals) => _.mean(vals),
+                  aggregate: (vals) =>
+                    _.mean(
+                      vals.filter((v) => !_.isNil(v) && !_.isNaN(v) && v > 0),
+                    ),
                   Aggregated: (row) => (
                     <span>
                       {row.value.toFixed(2)} <FontAwesomeIcon icon={BookIcon} />
@@ -113,7 +108,7 @@ export default class YearSummaryTable extends React.Component {
                   Cell: (row) => row.value.toFixed(2),
                 },
               ]}
-              pivotBy={['year', 'month']}
+              pivotBy={['year']}
             />
           );
         }}
