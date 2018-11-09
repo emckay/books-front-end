@@ -5,7 +5,10 @@ import gql from 'graphql-tag';
 import Book from './book/Book';
 import {Query} from 'react-apollo';
 import {DateTime} from 'luxon';
-import {faBook as BookIcon} from '@fortawesome/pro-light-svg-icons';
+import {
+  faBook as BookIcon,
+  faQuestion as MissingIcon,
+} from '@fortawesome/pro-light-svg-icons';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import _ from 'lodash';
 
@@ -14,25 +17,30 @@ const GET_TABLE_DATA = gql`
     readings(orderBy: "startDate", order: "DESC") {
       rating
       startDate
-      endDate
-      amountPerDay
-      amountPerDayPercentile
-      daysToFinish
-      daysToFinishPercentile
-      contrariness
-      contrarinessPercentile
-      contrarinessAbsPercentile
       ratingPercentile
       finished
       book {
         ...BookComponentFields
-        estimatedLengthPercentile
         estimatedLength
       }
     }
   }
   ${Book.fragments.book}
 `;
+
+const roundedBookLengthCell = (key, digits, {includeMissing = false} = {}) => ({
+  value,
+  subRows,
+}) =>
+  value ? (
+    <span>
+      {value.toFixed(2)} <FontAwesomeIcon icon={BookIcon} />
+      {includeMissing &&
+        ` (${subRows.map((r) => r[key]).filter(_.isNil).length} missing)`}
+    </span>
+  ) : (
+    <FontAwesomeIcon icon={MissingIcon} />
+  );
 
 const LENGTH_NORMALIZATION_FACTOR = 5000;
 window.DateTime = DateTime;
@@ -73,39 +81,33 @@ export default class YearSummaryTable extends React.Component {
                   Header: 'Rating',
                   accessor: 'rating',
                   aggregate: (vals) =>
-                    _.mean(
-                      vals.filter((v) => !_.isNil(v) && !_.isNaN(v) && v > 0),
-                    ),
+                    _.mean(vals.filter((v) => !_.isNil(v) && !_.isNaN(v))),
                   Aggregated: (row) => `${row.value.toFixed(2)} average`,
                 },
                 {
                   Header: 'Average book length',
                   id: 'lengthAvg',
                   accessor: (row) =>
-                    row.book.estimatedLength / LENGTH_NORMALIZATION_FACTOR,
+                    !_.isNil(row.book.estimatedLength)
+                      ? row.book.estimatedLength / LENGTH_NORMALIZATION_FACTOR
+                      : null,
                   aggregate: (vals) =>
-                    _.mean(
-                      vals.filter((v) => !_.isNil(v) && !_.isNaN(v) && v > 0),
-                    ),
-                  Aggregated: (row) => (
-                    <span>
-                      {row.value.toFixed(2)} <FontAwesomeIcon icon={BookIcon} />
-                    </span>
-                  ),
-                  Cell: (row) => row.value.toFixed(2),
+                    _.mean(vals.filter((v) => !_.isNil(v) && !_.isNaN(v))),
+                  Aggregated: roundedBookLengthCell('lengthAvg', 2),
+                  Cell: roundedBookLengthCell('lengthAvg', 2),
                 },
                 {
                   Header: 'Total amount read',
                   id: 'lengthTot',
                   accessor: (row) =>
-                    row.book.estimatedLength / LENGTH_NORMALIZATION_FACTOR,
+                    !_.isNil(row.book.estimatedLength)
+                      ? row.book.estimatedLength / LENGTH_NORMALIZATION_FACTOR
+                      : null,
                   aggregate: (vals) => _.sum(vals),
-                  Aggregated: (row) => (
-                    <span>
-                      {row.value.toFixed()} <FontAwesomeIcon icon={BookIcon} />
-                    </span>
-                  ),
-                  Cell: (row) => row.value.toFixed(2),
+                  Aggregated: roundedBookLengthCell('lengthTot', 2, {
+                    includeMissing: true,
+                  }),
+                  Cell: roundedBookLengthCell('lengthTot', 2),
                 },
               ]}
               pivotBy={['year']}
