@@ -8,6 +8,8 @@ import {
   MostContrarianBooks,
   LeastContrarianBooks,
 } from './components/book/BookGroups';
+import ReadingsTable from './components/ReadingsTable';
+import YearSummaryTable from './components/YearSummaryTable';
 
 class App extends Component {
   render() {
@@ -23,6 +25,10 @@ class App extends Component {
         <LeastContrarianBooks variables={{count: 3}} />
         <h1>Reading speed over time</h1>
         <AmountPerDayChart />
+        <h1>All Books</h1>
+        <ReadingsTable />
+        <h1>Yearly Summary</h1>
+        <YearSummaryTable />
         <hr />
         <div className="text-center">
           This application was created by Eric McKay. The source code is
