@@ -7,6 +7,7 @@ import {Query} from 'react-apollo';
 import {DateTime} from 'luxon';
 import Stars from './Stars';
 import {
+  faSearch as ObscurityIcon,
   faRabbitFast as SpeedIcon,
   faBook as LengthIcon,
   faThumbsUp as PositiveContrarinessIcon,
@@ -37,6 +38,7 @@ const GET_TABLE_DATA = gql`
         ...BookComponentFields
         estimatedLengthPercentile
         estimatedLength
+        goodreadsRatingsCountPercentile
       }
     }
   }
@@ -100,6 +102,13 @@ export default class ReadingsTable extends React.Component {
                   accessor: 'book.estimatedLengthPercentile',
                   Cell: (row) => (
                     <Stars percentile={row.value} fullIcon={LengthIcon} />
+                  ),
+                },
+                {
+                  Header: 'Obscurity',
+                  accessor: 'book.goodreadsRatingsCountPercentile',
+                  Cell: (row) => (
+                    <Stars percentile={1 - row.value} fullIcon={ObscurityIcon} />
                   ),
                 },
                 {
