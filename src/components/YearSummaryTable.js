@@ -6,8 +6,10 @@ import Book from './book/Book';
 import {Query} from 'react-apollo';
 import {DateTime} from 'luxon';
 import {
-  faBook as BookIcon,
+  faBook as LengthIcon,
   faQuestion as MissingIcon,
+  faHeadphones as AudiobookIcon,
+  faBookOpen as BookIcon,
 } from '@fortawesome/pro-light-svg-icons';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 import _ from 'lodash';
@@ -19,6 +21,7 @@ const GET_TABLE_DATA = gql`
       startDate
       ratingPercentile
       finished
+      audio
       book {
         ...BookComponentFields
         estimatedLength
@@ -34,7 +37,7 @@ const roundedBookLengthCell = (key, digits, {includeMissing = false} = {}) => ({
 }) =>
   value ? (
     <span>
-      {value.toFixed(2)} <FontAwesomeIcon icon={BookIcon} />
+      {value.toFixed(2)} <FontAwesomeIcon icon={LengthIcon} />
       {includeMissing &&
         ` (${subRows.map((r) => r[key]).filter(_.isNil).length} missing)`}
     </span>
@@ -76,6 +79,31 @@ export default class YearSummaryTable extends React.Component {
                   accessor: 'book.title',
                   aggregate: (vals) => vals.length,
                   Aggregated: (row) => `${row.value} total`,
+                },
+                {
+                  Header: 'Audio',
+                  accessor: 'audio',
+                  aggregate: (vals) => vals.filter((v) => v).length,
+                  Aggregated: (row) => (
+                    <span>
+                      <FontAwesomeIcon icon={AudiobookIcon} /> {row.value}
+                    </span>
+                  ),
+                  Cell: (row) =>
+                    row.value ? <FontAwesomeIcon icon={AudiobookIcon} /> : null,
+                },
+                {
+                  Header: 'Book',
+                  id: 'book',
+                  accessor: (row) => !row.audio,
+                  aggregate: (vals) => vals.filter((v) => v).length,
+                  Aggregated: (row) => (
+                    <span>
+                      <FontAwesomeIcon icon={BookIcon} /> {row.value}
+                    </span>
+                  ),
+                  Cell: (row) =>
+                    row.value ? <FontAwesomeIcon icon={BookIcon} /> : null,
                 },
                 {
                   Header: 'Rating',

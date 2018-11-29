@@ -19,6 +19,8 @@ import {
   faMinus as ZeroIcon,
   faQuestionCircle as MissingIcon,
   faCheck as FinishedIcon,
+  faHeadphones as AudiobookIcon,
+  faBookOpen as BookIcon,
 } from '@fortawesome/pro-light-svg-icons';
 import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
 
@@ -34,6 +36,7 @@ const GET_TABLE_DATA = gql`
       contrarinessPercentile
       contrarinessAbsPercentile
       finished
+      audio
       book {
         ...BookComponentFields
         estimatedLengthPercentile
@@ -135,6 +138,16 @@ export default class ReadingsTable extends React.Component {
                       <FontAwesomeIcon icon={FinishedIcon} />
                     ) : (
                       `${Math.round(row.value * 100)}%`
+                    ),
+                },
+                {
+                  Header: 'Format',
+                  accessor: 'audio',
+                  Cell: (row) =>
+                    row.value === true ? (
+                      <FontAwesomeIcon icon={AudiobookIcon} />
+                    ) : (
+                      <FontAwesomeIcon icon={BookIcon} />
                     ),
                 },
               ]}
