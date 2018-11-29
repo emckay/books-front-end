@@ -31,13 +31,17 @@ const GET_TABLE_DATA = gql`
   ${Book.fragments.book}
 `;
 
-const roundedBookLengthCell = (key, digits, {includeMissing = false} = {}) => ({
+const RoundedLength = ({value, digits=2}) => <span>
+      {value.toFixed(digits)} <FontAwesomeIcon icon={LengthIcon} />
+      </span>
+
+const roundedBookLengthCell = (key, digits = 2, {includeMissing = false} = {}) => ({
   value,
   subRows,
 }) =>
   value ? (
     <span>
-      {value.toFixed(2)} <FontAwesomeIcon icon={LengthIcon} />
+      <RoundedLength value={value} />
       {includeMissing &&
         ` (${subRows.map((r) => r[key]).filter(_.isNil).length} missing)`}
     </span>
@@ -83,10 +87,22 @@ export default class YearSummaryTable extends React.Component {
                 {
                   Header: 'Audio',
                   accessor: 'audio',
-                  aggregate: (vals) => vals.filter((v) => v).length,
+                  aggregate: (vals, rows) => ({
+                    count: vals.filter((v) => v).length,
+                    length: rows
+                      .filter((v) => v.audio)
+                      .reduce(
+                        (totLen, row) =>
+                          totLen + (row._original.book.estimatedLength
+                            ? row._original.book.estimatedLength
+                            : 0),
+                        0,
+                      ) / LENGTH_NORMALIZATION_FACTOR,
+                  }),
                   Aggregated: (row) => (
                     <span>
-                      <FontAwesomeIcon icon={AudiobookIcon} /> {row.value}
+                      <FontAwesomeIcon icon={AudiobookIcon} /> {row.value.count}{' '}
+                      (<RoundedLength value={row.value.length} />)
                     </span>
                   ),
                   Cell: (row) =>
@@ -96,10 +112,22 @@ export default class YearSummaryTable extends React.Component {
                   Header: 'Book',
                   id: 'book',
                   accessor: (row) => !row.audio,
-                  aggregate: (vals) => vals.filter((v) => v).length,
+                  aggregate: (vals, rows) => ({
+                    count: vals.filter((v) => v).length,
+                    length: rows
+                      .filter((v) => !v.audio)
+                      .reduce(
+                        (totLen, row) =>
+                          totLen + (row._original.book.estimatedLength
+                            ? row._original.book.estimatedLength
+                            : 0),
+                        0,
+                      ) / LENGTH_NORMALIZATION_FACTOR,
+                  }),
                   Aggregated: (row) => (
                     <span>
-                      <FontAwesomeIcon icon={BookIcon} /> {row.value}
+                      <FontAwesomeIcon icon={BookIcon} /> {row.value.count}{' '}
+                      (<RoundedLength value={row.value.length} />)
                     </span>
                   ),
                   Cell: (row) =>
