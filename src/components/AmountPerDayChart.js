@@ -230,7 +230,7 @@ class AmountPerDayChart extends PureComponent {
             </VictoryChart>
           </div>
         </Col>
-        <Col className="d-flex justify-content-center">
+        <Col className="d-flex justify-content-center" style={{width: '280px'}}>
           {this.state.selectedBookIsbn ? (
             <IsbnBook className="w-100" isbn={this.state.selectedBookIsbn} />
           ) : (
