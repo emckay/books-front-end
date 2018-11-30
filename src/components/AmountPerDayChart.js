@@ -10,6 +10,18 @@ import gql from 'graphql-tag';
 import {Query} from 'react-apollo';
 import {Row, Col, Card, ListGroup, ListGroupItem} from 'reactstrap';
 import IsbnBook from './book/IsbnBook';
+import sma from 'sma';
+import _ from 'lodash';
+
+const today = new Date().toISOString().substring(0, 10);
+const DAY_AGGREGATES_QUERY = gql`
+  {
+    dayAggregates(startDate: "2012-01-01", endDate: "${today}") {
+      date
+      amountRead
+    }
+  }
+`;
 
 const AMOUNT_PER_DAY_QUERY = gql`
   {
@@ -27,48 +39,71 @@ const AMOUNT_PER_DAY_QUERY = gql`
   }
 `;
 
-const amountReadPerDay = (data, zoomDomain) => {
-  const ret = data
-    .filter(
-      (reading) =>
-        reading.startDate &&
-        reading.endDate &&
-        reading.amountPerDay &&
-        (zoomDomain
-          ? new Date(reading.endDate) > zoomDomain.x[0] &&
-            new Date(reading.startDate) < zoomDomain.x[1]
-          : true)
-    )
-    .map((reading) => (
-      <VictoryLine
-        key={`${reading.book.isbn}-${reading.startDate}`}
-        data={[
-          {
-            x: new Date(reading.startDate),
-            y: reading.amountPerDay,
-            title: reading.title,
-            isbn: reading.book.isbn,
-            strokeWidth: reading.audio ? 8 : 4,
-          },
-          {
-            x: new Date(reading.endDate),
-            y: reading.amountPerDay,
-          },
-        ]}
-        style={{
-          data: {
-            stroke: d3ScaleChromatic.interpolateRdYlGn(
-              reading.ratingPercentile
-            ),
-            strokeWidth: (data) => {
-              return data[0].strokeWidth;
-            },
-          },
-        }}
-      />
-    ));
-  return ret;
+const makeMovingAverageData = (sortedData, window = 1) => {
+  const newYs = sma(sortedData.map((d) => d.y), window, (x) => x);
+  const newXs = sortedData
+    .map((d) => d.x)
+    .slice(sortedData.length - newYs.length);
+  return newXs.map((x, i) => ({x: x, y: newYs[i]}));
 };
+
+const dayAggregateLine = (data, zoomDomain, smoothingWindow = 1) => {
+  const dayAggs = data.dayAggregates;
+  const chartData = dayAggs.map((d) => ({
+    x: new Date(d.date),
+    y: d.amountRead,
+  }));
+  return (
+    <VictoryLine data={makeMovingAverageData(chartData, smoothingWindow)} />
+  );
+};
+
+const amountReadPerDay = _.memoize(
+  (data, zoomDomain) => {
+    const ret = data
+      .filter(
+        (reading) =>
+          reading.startDate &&
+          reading.endDate &&
+          reading.amountPerDay &&
+          (zoomDomain
+            ? new Date(reading.endDate) > zoomDomain.x[0] &&
+              new Date(reading.startDate) < zoomDomain.x[1]
+            : true),
+      )
+      .map((reading) => (
+        <VictoryLine
+          key={`${reading.book.isbn}-${reading.startDate}`}
+          name={`${reading.book.isbn}-${reading.startDate}`}
+          data={[
+            {
+              x: new Date(reading.startDate),
+              y: reading.amountPerDay,
+              title: reading.title,
+              isbn: reading.book.isbn,
+              strokeWidth: reading.audio ? 8 : 4,
+            },
+            {
+              x: new Date(reading.endDate),
+              y: reading.amountPerDay,
+            },
+          ]}
+          style={{
+            data: {
+              stroke: d3ScaleChromatic.interpolateRdYlGn(
+                reading.ratingPercentile,
+              ),
+              strokeWidth: (data) => {
+                return data[0].strokeWidth;
+              },
+            },
+          }}
+        />
+      ));
+    return ret;
+  },
+  (...args) => JSON.stringify(args),
+);
 
 class AmountPerDayChart extends PureComponent {
   state = {
@@ -87,22 +122,22 @@ class AmountPerDayChart extends PureComponent {
   static getDerivedStateFromProps(props) {
     const xDomain = [
       Math.min(
-        ...props.readings.filter((x) => x.startdate).map((x) => x.startdate)
+        ...props.readings.filter((x) => x.startdate).map((x) => x.startdate),
       ),
       Math.max(
-        ...props.readings.filter((x) => x.enddate).map((x) => x.enddate)
+        ...props.readings.filter((x) => x.enddate).map((x) => x.enddate),
       ),
     ];
     const yDomain = [
       Math.min(
         ...props.readings
           .filter((x) => x.amountPerDay && isFinite(x.amountPerDay))
-          .map((x) => x.amountPerDay)
+          .map((x) => x.amountPerDay),
       ),
       Math.max(
         ...props.readings
           .filter((x) => x.amountPerDay && isFinite(x.amountPerDay))
-          .map((x) => x.amountPerDay)
+          .map((x) => x.amountPerDay),
       ),
     ];
     return {xDomain, yDomain};
@@ -124,6 +159,10 @@ class AmountPerDayChart extends PureComponent {
   };
 
   render() {
+    const bookLineSegments = amountReadPerDay(
+      this.props.readings,
+      this.state.zoomDomain,
+    );
     return (
       <Row className="d-flex align-items-center justify-content-center">
         <Col>
@@ -147,7 +186,7 @@ class AmountPerDayChart extends PureComponent {
               events={[
                 {
                   target: 'data',
-                  childName: 'all',
+                  childName: bookLineSegments.map((ls) => ls.props.name),
                   eventHandlers: {
                     onClick: this.handleClick,
                     onMouseEnter: (event, props) => {
@@ -161,16 +200,20 @@ class AmountPerDayChart extends PureComponent {
                       ];
                     },
                     onMouseLeave: () => {
-                      this.setState({selectedBookIsbn: this.state.clickedBookIsbn});
+                      this.setState({
+                        selectedBookIsbn: this.state.clickedBookIsbn,
+                      });
                       return [
                         {
                           mutation: (props) => {
-                            return [{
-                              style: {
-                                ...props.style,
-                                strokeWidth: props.data[0].strokeWidth,
+                            return [
+                              {
+                                style: {
+                                  ...props.style,
+                                  strokeWidth: props.data[0].strokeWidth,
+                                },
                               },
-                            }];
+                            ];
                           },
                         },
                       ];
@@ -178,7 +221,12 @@ class AmountPerDayChart extends PureComponent {
                   },
                 },
               ]}>
-              {amountReadPerDay(this.props.readings, this.state.zoomDomain)}
+              {bookLineSegments}
+              {dayAggregateLine(
+                this.props.dayAggregates,
+                this.state.zoomDomain,
+                90,
+              )}
             </VictoryChart>
           </div>
         </Col>
@@ -216,11 +264,43 @@ class AmountPerDayChart extends PureComponent {
 
 const ConnectedAmountPerDayChart = (props) => (
   <Query query={AMOUNT_PER_DAY_QUERY}>
-    {({loading, error, data}) => {
-      if (loading) return <div>Loading data for chart</div>;
-      if (error) return <div>Error fetching data for chart. {error}</div>;
-      return <AmountPerDayChart readings={data.readings} {...props} />;
-    }}
+    {({
+      loading: loadingAmountPerDay,
+      error: errorAmountPerDay,
+      data: amountPerDayData,
+    }) => (
+      <Query query={DAY_AGGREGATES_QUERY}>
+        {({
+          loading: loadingDayAggregates,
+          error: errorDayAggregates,
+          data: dayAggregatesData,
+        }) => {
+          if (loadingAmountPerDay || loadingDayAggregates)
+            return <div>Loading data for chart</div>;
+          if (errorAmountPerDay)
+            return (
+              <div>
+                Error fetching amount per day data for chart.{' '}
+                {errorAmountPerDay}
+              </div>
+            );
+          if (errorDayAggregates)
+            return (
+              <div>
+                Error fetching day aggregate data for chart.{' '}
+                {errorDayAggregates}
+              </div>
+            );
+          return (
+            <AmountPerDayChart
+              readings={amountPerDayData.readings}
+              dayAggregates={dayAggregatesData}
+              {...props}
+            />
+          );
+        }}
+      </Query>
+    )}
   </Query>
 );
 export default ConnectedAmountPerDayChart;
