@@ -32,7 +32,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
-    "deploy": "surge ./build",
+    "deploy": "surge ./build --domain emckay-books.surge.sh",
     "format": "node_modules/.bin/prettier *.js **/*.js --write"
   },
   "devDependencies": {
